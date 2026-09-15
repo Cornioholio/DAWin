@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <Folder Include="Assets\" />
-    <Folder Include="Core\" />
     <Folder Include="Effects\" />
     <Folder Include="Instruments\" />
     <Folder Include="Project\" />

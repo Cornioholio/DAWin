@@ -1,4 +1,6 @@
-﻿using NAudio.Wave;
+﻿using DAWin.Core;
+using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace DAWin.Audio
 {
-    internal class AudioDevice
+    public class AudioDevice
     {
         enum DeviceType 
         {
@@ -22,41 +24,36 @@ namespace DAWin.Audio
             Off,
             Error
         }
-        struct DeviceIdentity 
+
+        private MMDevice? device_;
+        private DeviceStatus deviceStatus_ = DeviceStatus.Uninitialized;
+        private WasapiPlayer? wOut_;
+        private BufferedWaveProvider? bufferedWP_;
+        public string DeviceName => device_?.FriendlyName ?? "Unknown";
+
+
+        public AudioDevice(MMDevice device)
         {
-            string deviceName_;
-            int deviceID_;
+            // Store device
+            device_ = device;
         }
-
-        DeviceIdentity deviceIdentity_;
-        DeviceType deviceType_;
-        DeviceStatus deviceStatus_ = DeviceStatus.Uninitialized;
-
-        WasapiPlayerBuilder? wOut_;
-        BufferedWaveProvider? bufferedWP_;
-
-        public AudioDevice(int sampleR_, int channelC_, int bufferS_)
-        {
-            InitializeDevice(new AudioEngine.EngineSettings { sampleRate_ = sampleR_, channelCount_ = sampleR_, bufferSize_ = sampleR_ });
-        }
-        void InitializeDevice(AudioEngine.EngineSettings eSettings) 
+        public void InitializeDevice(AudioEngine.EngineSettings eSettings) 
         {
             //  Dont allow reinitialization if already initialized
             if (deviceStatus_ != DeviceStatus.Uninitialized) 
             {
+                Logger.LogWarning("Device cannot be reinitialized.", 2100);
                 return;
             }
 
-            wOut_ = new WasapiPlayerBuilder();
-
+            wOut_ = new WasapiPlayerBuilder().WithDevice(device_).Build();
             bufferedWP_ = new BufferedWaveProvider(new WaveFormat(eSettings.sampleRate_, 16, eSettings.channelCount_));
-            
-            wOut_.Build();
+            wOut_.Init(bufferedWP_);
 
             deviceStatus_ = DeviceStatus.Initialized;
         }
 
-        void StartDevice() 
+        public void StartDevice() 
         {
             if (deviceStatus_ != DeviceStatus.Initialized && deviceStatus_ != DeviceStatus.Off) 
             {
@@ -65,16 +62,21 @@ namespace DAWin.Audio
 
             // Start 
         }
-        void StopDevice() 
+        public void StopDevice() 
         {
             if (deviceStatus_ != DeviceStatus.On) 
             {
                 return;
             }
         }
-        void DisposeDevice() 
+        public void DisposeDevice() 
         {
+            if(device_ == null) 
+            {
+                return;
+            }
 
+            device_.Dispose();
         }
     }
 }
